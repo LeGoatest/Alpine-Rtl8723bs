@@ -1,20 +1,10 @@
 #!/bin/sh
-# This script performs a basic setup check for the Jules development environment.
-# It prints user, location, and project file information.
+# This script prepares and runs the ISO build process.
 
-echo ">>> Initializing Jules Environment Setup..."
-echo ""
+set -e
 
-echo "--- User Information ---"
-echo "Current User: $(whoami)"
-echo ""
+echo ">>> Preparing the build script..."
+chmod +x build-nextbook-iso.sh
 
-echo "--- Location Information ---"
-echo "Working Directory: $(pwd)"
-echo ""
-
-echo "--- Project Files ---"
-ls -laF
-
-echo ""
-echo ">>> Environment setup check complete."
+echo ">>> Starting the build process..."
+./build-nextbook-iso.sh

@@ -6,12 +6,13 @@
 #
 # Requirements:
 # - A Linux environment with Docker and Git installed.
-# - Sudo privileges to run Docker commands.
+# - The user must be in the 'docker' group to run Docker commands without sudo.
 #
 # Instructions:
-# 1. Save this script as build-nextbook-iso.sh
-# 2. Make it executable: chmod +x build-nextbook-iso.sh
-# 3. Run it: ./build-nextbook-iso.sh
+# 1. Ensure you are part of the 'docker' group to run this script.
+# 2. Save this script as build-nextbook-iso.sh
+# 3. Make it executable: chmod +x build-nextbook-iso.sh
+# 4. Run it: ./build-nextbook-iso.sh
 
 set -e
 
@@ -140,8 +141,8 @@ CMD='./mkimage.sh --profile nextbook --repository http://dl-cdn.alpinelinux.org/
 # Define Docker arguments, including the volume mount for the output
 DOCKER_ARGS="--entrypoint sh --user root -v $(pwd)/../../output:/output"
 
-# Execute the build command with sudo
-sudo DABUILD_ARGS="$DOCKER_ARGS" ../../docker-abuild/dabuild sh -c "$CMD"
+# Execute the build command
+DABUILD_ARGS="$DOCKER_ARGS" ../../docker-abuild/dabuild sh -c "$CMD"
 
 cd ../..
 
