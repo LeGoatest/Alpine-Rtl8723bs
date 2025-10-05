@@ -82,7 +82,7 @@ profile_nextbook() {
 	echo "wallpaper=/usr/share/backgrounds/alpine-ibex.jpg" >> "$apkovl_dir"/etc/xdg/pcmanfm-qt/lxqt/settings.conf
 
 	# Copy and configure the Wi-Fi setup script
-	cp wifi-setup.sh "$apkovl_dir"/usr/local/bin/wifi-setup.sh
+	cp /home/builder/aports/scripts/wifi-setup.sh "$apkovl_dir"/usr/local/bin/wifi-setup.sh
 	chmod +x "$apkovl_dir"/usr/local/bin/wifi-setup.sh
 
 	# Create autostart entry for the Wi-Fi script
@@ -99,45 +99,53 @@ cat << 'EOF' > aports/scripts/wifi-setup.sh
 #!/bin/sh
 # This script is run on startup to configure the Wi-Fi connection.
 SSID="GNet"
+export SSID
+
 # Open a terminal and prompt for the password
-lxterminal -t "Wi-Fi Setup" -e /bin/sh -c "
-	echo 'Please enter the password for the Wi-Fi network: $SSID'
-	read -s -p 'Password: ' password
+lxterminal -t "Wi-Fi Setup" -e /bin/sh -c '
+	echo "Please enter the password for the Wi-Fi network: $SSID"
+	read -s -p "Password: " password
 	echo
-	# Generate the wpa_supplicant configuration
-	wpa_passphrase '$SSID' \"\$password\" >> /etc/wpa_supplicant/wpa_supplicant.conf
+
+	# Generate the wpa_supplicant configuration from user input
+	wpa_passphrase "$SSID" "$password" >> /etc/wpa_supplicant/wpa_supplicant.conf
+
 	# Connect to the network
 	wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant/wpa_supplicant.conf
 	udhcpc -i wlan0
-	echo 'Wi-Fi setup complete. You can close this window.'
-	read -p 'Press Enter to close...'
-"
+
+	echo "Wi-Fi setup complete. You can close this window."
+	read -p "Press Enter to close..."
+'
 EOF
 
 # 5. Prepare the docker-abuild environment
 echo ">>> Preparing docker-abuild environment..."
 cd docker-abuild
 make
-# Remove interactive flags that prevent non-interactive execution
 sed -i 's/--tty --interactive/ /' dabuild
 cd ..
 
-# 6. Run the build
+# 6. Create a directory on the host to store the final ISO
+mkdir -p output
+
+# 7. Run the build
 echo ">>> Starting the ISO build process. This may take a long time..."
 cd aports/scripts
 
-# The final, fully corrected build command
-sudo DABUILD_ARGS="--entrypoint sh --user root" ../../docker-abuild/dabuild -c \
-"./mkimage.sh \
---profile nextbook \
---repository http://dl-cdn.alpinelinux.org/alpine/edge/main \
---repository http://dl-cdn.alpinelinux.org/alpine/edge/community \
---outdir /home/builder/packages"
+# Construct the command to be run inside the container
+# Note the single quotes to ensure arguments are passed correctly
+CMD='./mkimage.sh --profile nextbook --repository http://dl-cdn.alpinelinux.org/alpine/edge/main --repository http://dl-cdn.alpinelinux.org/alpine/edge/community --outdir /output'
+
+# Define Docker arguments, including the volume mount for the output
+DOCKER_ARGS="--entrypoint sh --user root -v $(pwd)/../../output:/output"
+
+# Execute the build command with sudo
+sudo DABUILD_ARGS="$DOCKER_ARGS" ../../docker-abuild/dabuild sh -c "$CMD"
 
 cd ../..
 
 echo ""
 echo ">>> Build complete!"
-echo "Your custom ISO should be located in: alpine-build/packages/edge/x86_64/"
-echo "File: geitalpine-3.22.1-x86.iso"
-ls -l alpine-build/packages/edge/x86_64/
+echo "Your custom ISO should be located in: alpine-build/output/"
+ls -l alpine-build/output/
